@@ -28,18 +28,18 @@ if (missingVars.length > 0) {
   process.exit(1);
 }
 
-// ✅ STEP 3: CONNECT TO DATABASE — FIXED
+// ✅ STEP 3: CONNECT TO DATABASE
 console.log('🔌 Connecting to MongoDB...');
 let dbConnected = false;
 try {
-  const { default: connectDB } = await import('./config/db.js'); // ✅ FIXED
-  await connectDB();                                              // ✅ FIXED
+  const { default: connectDB } = await import('./config/db.js');
+  await connectDB();
   dbConnected = true;
   console.log('✅ MongoDB ready');
 } catch (err) {
   console.error('❌ MongoDB failed:', err.message);
   console.error('🚫 Server will NOT start without database connection');
-  process.exit(1); // ✅ FIXED: stop server if DB fails, don't run blindly
+  process.exit(1);
 }
 
 // ✅ STEP 4: INITIALIZE FIREBASE
@@ -67,6 +67,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5174',
   'http://127.0.0.1:5173',
+  'https://expense-1.vercel.app',  // ✅ Vercel URL added
 ];
 
 app.use(cors({
@@ -75,6 +76,7 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log('🚫 CORS blocked:', origin);
       callback(new Error('CORS not allowed'));
     }
   },
