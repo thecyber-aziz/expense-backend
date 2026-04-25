@@ -4,7 +4,7 @@ import admin from '../config/firebase.js';
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE,
+    expiresIn: '7d',  // ✅ Hardcoded - 7 days
   });
 };
 
