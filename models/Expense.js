@@ -7,10 +7,20 @@ const expenseSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    tabId: {
+      type: String,
+      required: true,
+    },
+    name: {
+      type: String,
+      required: [true, 'Please add a name'],
+      trim: true,
+      maxlength: [100, 'Name cannot be more than 100 characters'],
+    },
     description: {
       type: String,
-      required: [true, 'Please add a description'],
       trim: true,
+      required: false,
       maxlength: [100, 'Description cannot be more than 100 characters'],
     },
     amount: {
@@ -21,7 +31,12 @@ const expenseSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Please add a category'],
-      enum: ['food', 'transport', 'entertainment', 'utilities', 'shopping', 'health', 'other'],
+      enum: ['food', 'transport', 'entertainment', 'utilities', 'shopping', 'health', 'money transfer', 'home', 'self', 'grocery', 'recharge', 'other'],
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['Cash', 'Online'],
+      default: 'Cash',
     },
     date: {
       type: Date,

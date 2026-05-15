@@ -68,6 +68,24 @@ const userSchema = new mongoose.Schema(
         default: null,
       },
     },
+    tabs: [{
+      tabId: {
+        type: String,
+        required: true,
+      },
+      name: {
+        type: String,
+        default: 'Personal',
+      },
+      cashBalance: {
+        type: Number,
+        default: 0,
+      },
+      onlineBalance: {
+        type: Number,
+        default: 0,
+      },
+    }],
   },
   {
     timestamps: true,

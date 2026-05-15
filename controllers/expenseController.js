@@ -1,12 +1,17 @@
 import Expense from '../models/Expense.js';
+import User from '../models/User.js';
 
-// @desc    Get all expenses for a user
+// @desc    Get all expenses for a user (with optional tab filter)
 // @route   GET /api/expenses
 // @access  Private
 export const getExpenses = async (req, res, next) => {
   try {
-    const { month, year, category } = req.query;
+    const { month, year, category, tabId } = req.query;
     let filter = { userId: req.user.id };
+
+    if (tabId) {
+      filter.tabId = tabId;
+    }
 
     if (month && year) {
       const startDate = new Date(year, month - 1, 1);
@@ -18,7 +23,7 @@ export const getExpenses = async (req, res, next) => {
       filter.category = category;
     }
 
-    const expenses = await Expense.find(filter).sort({ date: -1 });
+    const expenses = await Expense.find(filter).sort({ createdAt: -1, date: -1 });
 
     res.status(200).json({
       success: true,
@@ -71,16 +76,53 @@ export const getExpense = async (req, res, next) => {
 // @access  Private
 export const createExpense = async (req, res, next) => {
   try {
-    const { description, amount, category, date, notes } = req.body;
+    const { name, description, amount, category, date, notes, paymentMethod, tabId } = req.body;
 
-    const expense = await Expense.create({
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please add an expense name',
+      });
+    }
+
+    if (!tabId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a tab ID',
+      });
+    }
+
+    // Create the expense
+    const expenseData = {
       userId: req.user.id,
-      description,
+      tabId,
+      name,
       amount,
       category,
       date,
       notes,
-    });
+      paymentMethod: paymentMethod || 'Cash',
+    };
+    
+    // Only include description if provided
+    if (description && description.trim()) {
+      expenseData.description = description.trim();
+    }
+    
+    const expense = await Expense.create(expenseData);
+
+    // Update user tab balance based on payment method
+    const user = await User.findById(req.user.id);
+    const tabIndex = user.tabs.findIndex(t => t.tabId === tabId);
+    
+    if (tabIndex !== -1) {
+      if (paymentMethod === 'Online') {
+        user.tabs[tabIndex].onlineBalance -= amount;
+      } else {
+        user.tabs[tabIndex].cashBalance -= amount;
+      }
+      await user.save();
+    }
 
     res.status(201).json({
       success: true,
@@ -115,10 +157,49 @@ export const updateExpense = async (req, res, next) => {
       });
     }
 
-    expense = await Expense.findByIdAndUpdate(req.params.id, req.body, {
+    const oldAmount = expense.amount;
+    const oldPaymentMethod = expense.paymentMethod;
+    const newAmount = req.body.amount || oldAmount;
+    const newPaymentMethod = req.body.paymentMethod || oldPaymentMethod;
+
+    // Prepare update data
+    const updateData = { ...req.body };
+    
+    // Only include description if provided
+    if (updateData.description && !updateData.description.trim()) {
+      delete updateData.description;
+    } else if (updateData.description) {
+      updateData.description = updateData.description.trim();
+    }
+    
+    // Update the expense
+    expense = await Expense.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     });
+
+    // Update user tab balance if amount or payment method changed
+    if (oldAmount !== newAmount || oldPaymentMethod !== newPaymentMethod) {
+      const user = await User.findById(req.user.id);
+      const tabIndex = user.tabs.findIndex(t => t.tabId === expense.tabId);
+      
+      if (tabIndex !== -1) {
+        // Reverse old deduction
+        if (oldPaymentMethod === 'Online') {
+          user.tabs[tabIndex].onlineBalance += oldAmount;
+        } else {
+          user.tabs[tabIndex].cashBalance += oldAmount;
+        }
+
+        // Apply new deduction
+        if (newPaymentMethod === 'Online') {
+          user.tabs[tabIndex].onlineBalance -= newAmount;
+        } else {
+          user.tabs[tabIndex].cashBalance -= newAmount;
+        }
+        await user.save();
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -153,6 +234,19 @@ export const deleteExpense = async (req, res, next) => {
       });
     }
 
+    // Refund the amount to the correct balance
+    const user = await User.findById(req.user.id);
+    const tabIndex = user.tabs.findIndex(t => t.tabId === expense.tabId);
+    
+    if (tabIndex !== -1) {
+      if (expense.paymentMethod === 'Online') {
+        user.tabs[tabIndex].onlineBalance += expense.amount;
+      } else {
+        user.tabs[tabIndex].cashBalance += expense.amount;
+      }
+      await user.save();
+    }
+
     await Expense.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -172,8 +266,12 @@ export const deleteExpense = async (req, res, next) => {
 // @access  Private
 export const getExpenseStats = async (req, res, next) => {
   try {
-    const { month, year } = req.query;
+    const { month, year, tabId } = req.query;
     let filter = { userId: req.user.id };
+
+    if (tabId) {
+      filter.tabId = tabId;
+    }
 
     if (month && year) {
       const startDate = new Date(year, month - 1, 1);
