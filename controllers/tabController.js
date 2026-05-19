@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Expense from '../models/Expense.js';
+import BalanceHistory from '../models/BalanceHistory.js';
 
 // @desc    Get all tabs for a user
 // @route   GET /api/tabs
@@ -161,8 +162,9 @@ export const deleteTab = async (req, res, next) => {
       });
     }
 
-    // Delete associated expenses
+    // Delete associated expenses and balance history
     await Expense.deleteMany({ userId: req.user.id, tabId });
+    await BalanceHistory.deleteMany({ userId: req.user.id, tabId });
 
     user.tabs.splice(tabIndex, 1);
     await user.save();

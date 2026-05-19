@@ -58,6 +58,7 @@ console.log('📚 Loading routes...');
 const { default: authRoutes } = await import('./routes/authRoutes.js');
 const { default: expenseRoutes } = await import('./routes/expenseRoutes.js');
 const { default: tabRoutes } = await import('./routes/tabRoutes.js');
+const { default: balanceRoutes } = await import('./routes/balanceRoutes.js');
 
 // ✅ STEP 6: CREATE EXPRESS APP
 const app = express();
@@ -101,6 +102,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/tabs', tabRoutes);
+app.use('/api/balance', balanceRoutes);
 
 // ✅ STEP 11: HEALTH CHECK
 app.get('/api/health', (req, res) => {
